@@ -6,7 +6,7 @@ The exporter generates labeled metrics with the status of the socket connection 
 netstat -nap | grep
 ```
 ## Why a connection watch exporter?
-Most of the time applications interact each other using sockets. It may not enought to know that the process is running it may be usefull to detect it has connections established on remote machines on specified ports.
+Most of the time applications interact each other using sockets. It may not enought to know that the underlying processes are running it may be usefull to detect they have established connections to machines on specified ports.
 This exporter reports the status and number of connections according to the configuration.
 
 ## Getting started
