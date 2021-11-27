@@ -29,22 +29,6 @@ import (
 	kingpin "gopkg.in/alecthomas/kingpin.v2"
 )
 
-// Branch is set during build to the git branch.
-var Branch string
-
-// BuildDate is set during build to the ISO-8601 date and time.
-var BuildDate string
-
-// Revision is set during build to the git commit revision.
-var Revision string
-
-// Version is set during build to the git describe version
-// (semantic version)-(commitish) form.
-var Version = "0.1.1"
-
-// VersionShort is set during build to the semantic version.
-var VersionShort = "0.1.1"
-
 const (
 	// Constant values
 	metricsPublishingPort = ":9293"
@@ -72,7 +56,7 @@ func main() {
 
 	logConfig := promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, &logConfig)
-	kingpin.Version(version.Print("connection-status-exporter"))
+	kingpin.Version(version.Print("cnxwatch_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
@@ -83,7 +67,7 @@ func main() {
 	// version.Version = VersionShort
 
 	logger := promlog.New(&logConfig)
-	level.Info(logger).Log("msg", "Starting connection-status-exporter", "version", version.Info())
+	level.Info(logger).Log("msg", "Starting cnxwatch_exporter", "version", version.Info())
 	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
 
 	// read the configuration if not empty
@@ -101,14 +85,14 @@ func main() {
 	// create a new exporter
 	sockExporter := NewSocketSetExporter(sockets, logger)
 	//	prometheus.MustRegister(sockExporter)
-	level.Info(logger).Log("msg", "Connection Status Exporter initialized")
+	level.Info(logger).Log("msg", "Connection Watch Exporter initialized")
 
 	var landingPage = []byte(`<html>
 		<head>
-		<title>Connection Status Exporter</title>
+		<title>Connection Watch Exporter</title>
 		</head>
 		<body>
-		<h1>Connection Status Exporter</h1>
+		<h1>Connection Watch Exporter</h1>
 			<p><a href="` + *metricsPath + `">Metrics</a></p>
 		</body>
 		</html>

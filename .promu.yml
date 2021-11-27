@@ -1,17 +1,17 @@
 go:
     cgo: false
 repository:
-    path: github.com/peekjef72/cnxwatch_exporter
+    path: cnxwatch_exporter
 build:
     binaries:
-        - name: connection-status-exporter
+        - name: cnxwatch_exporter
     flags: -a -tags netgo
     ldflags: |
-        -X {{repoPath}}/version.Version={{.Version}}
-        -X {{repoPath}}/version.Revision={{.Revision}}
-        -X {{repoPath}}/version.Branch={{.Branch}}
-        -X {{repoPath}}/version.BuildUser={{user}}@{{host}}
-        -X {{repoPath}}/version.BuildDate={{date "20060102-15:04:05"}}
+        -X github.com/prometheus/common/version.Version={{.Version}}
+        -X github.com/prometheus/common/version.Revision={{.Revision}}
+        -X github.com/prometheus/common/version.Branch={{.Branch}}
+        -X github.com/prometheus/common/version.BuildUser={{user}}@{{host}}
+        -X github.com/prometheus/common/version.BuildDate={{date "20060102-15:04:05"}}
 tarball:
     prefix: .
     files:

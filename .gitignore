@@ -4,6 +4,8 @@
 *.dll
 *.so
 *.dylib
+cnxwatch_exporter
+*.tar.gz
 
 # Test binary, build with `go test -c`
 *.test
