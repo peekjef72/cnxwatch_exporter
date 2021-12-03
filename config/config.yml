@@ -1,16 +1,16 @@
 sockets:
   - name: hostname-ssh
-    host: 0.0.0.0
+    host: "*"
     port: 22
     protocol: tcp
     status: listen
   - name: hostname-grafana 
-    srcHost: "::"
-    port: 3000
+    srcHost: "*"
+    port: '3000'
     status: listen
     protocol: tcp6
   - name: ssh-from-localhost
     srcHost: 127.0.0.1
-    destHost: 127.0.0.1
-    destPort: 22
+    dstHost: 127.0.0.1
+    dstPort: 22
     status: established

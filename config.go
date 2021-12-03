@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -22,15 +24,17 @@ type socket struct {
 	Name        string `yaml:"name"`
 	Host        string `yaml:"host,omitempty"`
 	SrcHost     string `yaml:"srcHost,omitempty"`
-	DestHost    string `yaml:"destHost,omitempty"`
-	Port        uint16 `yaml:"port,omitempty"`
-	SrcPort     uint16 `yaml:"srcPort,omitempty"`
-	DestPort    uint16 `yaml:"destPort,omitempty"`
+	DstHost     string `yaml:"dstHost,omitempty"`
+	Port        string `yaml:"port,omitempty"`
+	SrcPort     string `yaml:"srcPort,omitempty"`
+	DstPort     string `yaml:"dstPort,omitempty"`
 	Protocol    string `yaml:"protocol,omitempty"`
 	ProcessName string `yaml:"process,omitempty"`
 
-	Status      string `yaml:"status,omitempty"`
-	procPattern *regexp.Regexp
+	Status           string `yaml:"status,omitempty"`
+	procPattern      *regexp.Regexp
+	srcPort, dstPort uint16
+	ip_src, ip_dst   net.IP
 }
 
 const (
@@ -106,6 +110,36 @@ func (thisSocketSet *socketSet) getSocketProtocol(protocol string) []socket {
 	return list
 }
 
+// collect slice of sockets for a specific protocol
+func (thisSocket *socket) resolveHostname(hostname string) (net.IP, error) {
+	var err error
+	// var ip_str string
+
+	if hostname == "" {
+		hostname = "*"
+	}
+	if strings.EqualFold(hostname, "any") || hostname == "*" {
+		// if thisSocket.Protocol == "tcp6" {
+		hostname = "0.0.0.0"
+		// } else {
+		// ip_str = "0.0.0.0"
+		// }
+		// } else {
+	}
+	var ips []net.IP
+	var ip net.IP
+
+	ips, err = net.LookupIP(hostname)
+	if err != nil {
+		return ip, err
+	}
+	ip = ips[0]
+	if thisSocket.Protocol == "tcp" || thisSocket.Protocol == "udp" {
+		ip = ip.To4()
+	}
+	return ip, err
+}
+
 // *************************************************************
 //
 // socket
@@ -113,6 +147,8 @@ func (thisSocketSet *socketSet) getSocketProtocol(protocol string) []socket {
 // *************************************************************
 // Check the sanity of the socket and fills the default values
 func (thisSocket *socket) check() error {
+	var err error
+
 	if thisSocket.Name == "" {
 		return (fmt.Errorf("socket must have the field name set"))
 	}
@@ -128,15 +164,15 @@ func (thisSocket *socket) check() error {
 		if thisSocket.SrcHost == "" && thisSocket.Host == "" {
 			return (fmt.Errorf("socket must have the field host or srcHost set"))
 		}
-		if thisSocket.Port == 0 && thisSocket.SrcPort == 0 {
+		if thisSocket.Port == "" && thisSocket.SrcPort == "" {
 			return (fmt.Errorf("socket must have the field port or srcPort"))
 		}
 	} else {
-		if thisSocket.SrcHost == "" && thisSocket.Host == "" && thisSocket.DestHost == "" {
+		if thisSocket.SrcHost == "" && thisSocket.Host == "" && thisSocket.DstHost == "" {
 			return (fmt.Errorf("socket must have the field host or srcHost or dstHost set"))
 		}
 
-		if thisSocket.Port == 0 && thisSocket.SrcPort == 0 && thisSocket.DestPort == 0 {
+		if thisSocket.Port == "" && thisSocket.SrcPort == "" && thisSocket.DstPort == "" {
 			return (fmt.Errorf("socket must have the field port or srcPort or dstPort set"))
 		}
 	}
@@ -144,9 +180,33 @@ func (thisSocket *socket) check() error {
 	if thisSocket.SrcHost == "" {
 		thisSocket.SrcHost = thisSocket.Host
 	}
+	thisSocket.ip_src, err = thisSocket.resolveHostname(thisSocket.SrcHost)
+	if err != nil {
+		return err
+	}
+	thisSocket.ip_dst, err = thisSocket.resolveHostname(thisSocket.DstHost)
+	if err != nil {
+		return err
+	}
 
-	if thisSocket.SrcPort == 0 {
+	if thisSocket.SrcPort == "" {
 		thisSocket.SrcPort = thisSocket.Port
+	}
+	var tmp_port int
+	if thisSocket.SrcPort != "" {
+		tmp_port, err = strconv.Atoi(thisSocket.SrcPort)
+		if err != nil {
+			return err
+		}
+		thisSocket.srcPort = uint16(tmp_port)
+	}
+
+	if thisSocket.DstPort != "" {
+		tmp_port, err = strconv.Atoi(thisSocket.DstPort)
+		if err != nil {
+			return err
+		}
+		thisSocket.dstPort = uint16(tmp_port)
 	}
 
 	if thisSocket.Protocol == "" {
@@ -159,7 +219,7 @@ func (thisSocket *socket) check() error {
 	}
 
 	// if processName pattern is specified, build a regex pattern
-	var err error
+
 	if thisSocket.ProcessName != "" {
 		thisSocket.procPattern, err = regexp.Compile("^" + thisSocket.ProcessName + "$")
 		if err != nil {

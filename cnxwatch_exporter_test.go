@@ -37,7 +37,7 @@ func TestSocketCheck(test *testing.T) {
 			socketToTest: socket{
 				Name:     "Test socket",
 				Host:     "localhost",
-				Port:     80,
+				Port:     "80",
 				Protocol: "incorrectProtocol",
 			},
 			expectedToFail: true,
@@ -47,7 +47,7 @@ func TestSocketCheck(test *testing.T) {
 			socketToTest: socket{
 				Name: "Test socket",
 				Host: "localhost",
-				Port: 80,
+				Port: "80",
 			},
 			expectedToFail: false,
 		},

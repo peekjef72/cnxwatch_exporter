@@ -2,11 +2,9 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"strconv"
 
-	// "strings"
 	"sync"
 
 	"github.com/cakturk/go-netstat/netstat"
@@ -122,42 +120,48 @@ func (thisSocket *socket) collect(exporter *SocketSetExporter, entries []netstat
 		if thisSocket.Status == "established" && entry.State != netstat.Established {
 			continue
 		}
-		if thisSocket.SrcHost != "" {
-			if strings.EqualFold(thisSocket.SrcHost, "any") {
-				if proto == "tcp6" || proto == "udp6" {
-					if entry.LocalAddr.IP.String() != "::" {
-						continue
-					}
-				} else {
-					if entry.LocalAddr.IP.String() != "0.0.0.0" {
-						continue
-					}
-
-				}
-			} else if thisSocket.SrcHost != entry.LocalAddr.IP.String() {
-				continue
-			}
-		}
-		if thisSocket.DestHost != "" {
-			if strings.EqualFold(thisSocket.DestHost, "any") {
-				if proto == "tcp6" || proto == "udp6" {
-					if entry.RemoteAddr.IP.String() != "::" {
-						continue
-					}
-				} else {
-					if entry.RemoteAddr.IP.String() != "0.0.0.0" {
-						continue
-					}
-
-				}
-			} else if thisSocket.DestHost != entry.RemoteAddr.IP.String() {
-				continue
-			}
-		}
-		if thisSocket.SrcPort != 0 && thisSocket.SrcPort != entry.LocalAddr.Port {
+		if !thisSocket.ip_src.Equal(entry.LocalAddr.IP) {
 			continue
 		}
-		if thisSocket.DestPort != 0 && thisSocket.DestPort != entry.RemoteAddr.Port {
+		if !thisSocket.ip_dst.Equal(entry.RemoteAddr.IP) {
+			continue
+		}
+		// if thisSocket.SrcHost != "" {
+		// 	if strings.EqualFold(thisSocket.SrcHost, "any") || thisSocket.SrcHost == "*" {
+		// 		if proto == "tcp6" || proto == "udp6" {
+		// 			if entry.LocalAddr.IP.String() != "::" {
+		// 				continue
+		// 			}
+		// 		} else {
+		// 			if entry.LocalAddr.IP.String() != "0.0.0.0" {
+		// 				continue
+		// 			}
+
+		// 		}
+		// 	} else if thisSocket.SrcHost != entry.LocalAddr.IP.String() {
+		// 		continue
+		// 	}
+		// }
+		// if thisSocket.DstHost != "" {
+		// 	if strings.EqualFold(thisSocket.DstHost, "any") || thisSocket.DstHost == "*" {
+		// 		if proto == "tcp6" || proto == "udp6" {
+		// 			if entry.RemoteAddr.IP.String() != "::" {
+		// 				continue
+		// 			}
+		// 		} else {
+		// 			if entry.RemoteAddr.IP.String() != "0.0.0.0" {
+		// 				continue
+		// 			}
+
+		// 		}
+		// 	} else if thisSocket.DstHost != entry.RemoteAddr.IP.String() {
+		// 		continue
+		// 	}
+		// }
+		if thisSocket.srcPort != 0 && thisSocket.srcPort != entry.LocalAddr.Port {
+			continue
+		}
+		if thisSocket.dstPort != 0 && thisSocket.dstPort != entry.RemoteAddr.Port {
 			continue
 		}
 		if thisSocket.ProcessName != "" && !thisSocket.procPattern.MatchString(entry.Process.Name) {
@@ -174,26 +178,25 @@ func (thisSocket *socket) collect(exporter *SocketSetExporter, entries []netstat
 	} else {
 		labels[1] = thisSocket.SrcHost
 	}
-	if thisSocket.SrcPort == 0 {
+	if thisSocket.srcPort == 0 {
 		labels[2] = "*"
 	} else {
-		labels[2] = strconv.Itoa(int(thisSocket.SrcPort))
+		labels[2] = strconv.Itoa(int(thisSocket.srcPort))
 	}
-	if thisSocket.DestHost == "" {
+	if thisSocket.DstHost == "" {
 		labels[3] = "*"
 	} else {
-		labels[3] = thisSocket.DestHost
+		labels[3] = thisSocket.DstHost
 	}
-	if thisSocket.DestPort == 0 {
+	if thisSocket.dstPort == 0 {
 		labels[4] = "*"
 	} else {
-		labels[4] = strconv.Itoa(int(thisSocket.DestPort))
+		labels[4] = strconv.Itoa(int(thisSocket.dstPort))
 	}
 	labels[5] = thisSocket.Protocol
 	labels[6] = thisSocket.Status
 
 	labels[7] = thisSocket.ProcessName
-	level.Debug(exporter.logger).Log("labels:", fmt.Sprintf("%+q", labels))
 
 	// Updated the status of the socket in the metric
 	exporter.socketStatusMetrics.WithLabelValues(labels[:]...).Set(float64(connectionCount))
@@ -203,6 +206,9 @@ func (thisSocket *socket) collect(exporter *SocketSetExporter, entries []netstat
 		connectionStatus = 1
 	}
 	exporter.socketCountMetrics.WithLabelValues(labels[:]...).Set(float64(connectionStatus))
+	level.Debug(exporter.logger).Log("status", fmt.Sprintf("%d", connectionStatus),
+		"count", fmt.Sprintf("%d", connectionCount),
+		"labels", fmt.Sprintf("%+q", labels))
 
 	return
 }

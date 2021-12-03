@@ -38,7 +38,7 @@ var (
 	listenAddress = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(metricsPublishingPort).String()
 	metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose collector's internal metrics.").Default("/metrics").String()
 	configFile    = kingpin.Flag("config-file", "Exporter configuration file.").Default("config/config.yml").String()
-	dry_run       = kingpin.Flag("dry-run", "Only check exporter configuration file and exit.").Default("false").Bool()
+	dry_run       = kingpin.Flag("dry-run", "Only check exporter configuration file and exit.").Short('n').Default("false").Bool()
 )
 
 //***********************************************************************************************
