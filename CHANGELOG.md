@@ -5,7 +5,7 @@ This project adheres to [Semantic Versioning](http://semver.org/) and [Keep a ch
  <!--next-version-placeholder-->
 ## 0.1.2 (2021-12-03)
 ### fixed
-- issues [#1](/issues/1), [#2](/issues/2), [#3](/issues/3), [#4](/issues/4)
+- issues [#1](../../issues/1), [#2](../../issues/2), [#3](../../issues/3), [#4](../../issues/4)
   
 ### changes
 - add shorthand -n for --dry-run
