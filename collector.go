@@ -20,12 +20,13 @@ type SocketSetExporter struct {
 	mutex               sync.Mutex
 	sockets             *socketSet
 	logger              log.Logger
+	debug               bool
 }
 
 var SocketSetLabels = []string{"name", "srchost", "srcport", "dsthost", "dstport", "protocol", "status", "process"}
 
 // NewSocketSetExporter Creator of SocketSetExporter
-func NewSocketSetExporter(sockets *socketSet, logger log.Logger) *SocketSetExporter {
+func NewSocketSetExporter(sockets *socketSet, logger log.Logger, debug bool) *SocketSetExporter {
 
 	return &SocketSetExporter{
 		socketStatusMetrics: prometheus.NewGaugeVec(
@@ -40,6 +41,7 @@ func NewSocketSetExporter(sockets *socketSet, logger log.Logger) *SocketSetExpor
 			}, SocketSetLabels),
 		sockets: sockets,
 		logger:  logger,
+		debug:   debug,
 	}
 }
 
@@ -112,18 +114,32 @@ func (thisSocket *socket) collect(exporter *SocketSetExporter, entries []netstat
 	connectionCount := 0
 
 	for _, entry := range entries {
-		// level.Debug(exporter.logger).Log("socket", fmt.Sprintf("%+v", entry))
-		// level.Debug(exporter.logger).Log("addr", fmt.Sprintf("%s", entry.LocalAddr.IP.String()))
+		if exporter.debug {
+			level.Debug(exporter.logger).Log("debug", "check", "cur_socket", fmt.Sprintf("%+v", entry))
+			level.Debug(exporter.logger).Log("debug", "check", "check", thisSocket.ToString())
+		}
 		if thisSocket.Status == "listen" && entry.State != netstat.Listen {
+			if exporter.debug {
+				level.Debug(exporter.logger).Log("debug", "check", "msg", "wrong cnx status (!= listen)")
+			}
 			continue
 		}
 		if thisSocket.Status == "established" && entry.State != netstat.Established {
+			if exporter.debug {
+				level.Debug(exporter.logger).Log("debug", "check", "msg", "wrong cnx status (!= established)")
+			}
 			continue
 		}
 		if !thisSocket.ip_src.Equal(entry.LocalAddr.IP) {
+			if exporter.debug {
+				level.Debug(exporter.logger).Log("debug", "check", "msg", "wrong source addr")
+			}
 			continue
 		}
 		if !thisSocket.ip_dst.Equal(entry.RemoteAddr.IP) {
+			if exporter.debug {
+				level.Debug(exporter.logger).Log("debug", "check", "msg", "wrong destination addr")
+			}
 			continue
 		}
 		// if thisSocket.SrcHost != "" {
@@ -159,16 +175,28 @@ func (thisSocket *socket) collect(exporter *SocketSetExporter, entries []netstat
 		// 	}
 		// }
 		if thisSocket.srcPort != 0 && thisSocket.srcPort != entry.LocalAddr.Port {
+			if exporter.debug {
+				level.Debug(exporter.logger).Log("debug", "check", "msg", "wrong source port")
+			}
 			continue
 		}
 		if thisSocket.dstPort != 0 && thisSocket.dstPort != entry.RemoteAddr.Port {
+			if exporter.debug {
+				level.Debug(exporter.logger).Log("debug", "check", "msg", "wrong destination port")
+			}
 			continue
 		}
 		if thisSocket.ProcessName != "" && !thisSocket.procPattern.MatchString(entry.Process.Name) {
+			if exporter.debug {
+				level.Debug(exporter.logger).Log("debug", "check", "msg", "wrong local processName.")
+			}
 			continue
 		}
 
 		connectionCount++
+		if exporter.debug {
+			level.Debug(exporter.logger).Log("debug", "check", "msg", fmt.Sprintf("ok count=%d", connectionCount))
+		}
 		// break
 	}
 	labels := make([]string, len(SocketSetLabels))
@@ -198,14 +226,14 @@ func (thisSocket *socket) collect(exporter *SocketSetExporter, entries []netstat
 
 	labels[7] = thisSocket.ProcessName
 
-	// Updated the status of the socket in the metric
-	exporter.socketStatusMetrics.WithLabelValues(labels[:]...).Set(float64(connectionCount))
-
 	connectionStatus := 0
 	if connectionCount > 0 {
 		connectionStatus = 1
 	}
-	exporter.socketCountMetrics.WithLabelValues(labels[:]...).Set(float64(connectionStatus))
+	// Updated the status of the socket in the metric
+	exporter.socketStatusMetrics.WithLabelValues(labels[:]...).Set(float64(connectionStatus))
+
+	exporter.socketCountMetrics.WithLabelValues(labels[:]...).Set(float64(connectionCount))
 	level.Debug(exporter.logger).Log("status", fmt.Sprintf("%d", connectionStatus),
 		"count", fmt.Sprintf("%d", connectionCount),
 		"labels", fmt.Sprintf("%+q", labels))

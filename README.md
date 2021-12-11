@@ -5,9 +5,11 @@ The exporter generates labeled metrics with the status of the socket connection 
 ```
 netstat -nap | grep
 ```
+You configure the only connections to watch at in the exporter configuration file.
+
 ## Why a connection watch exporter?
 Most of the time applications interact each other using sockets. It may not enought to know that the underlying processes are running it may be usefull to detect they have established connections to machines on specified ports.
-This exporter reports the status and number of connections according to the configuration.
+This exporter reports the status and number of connections according to the specified configuration.
 
 ## Getting started
 To run it:
@@ -31,7 +33,7 @@ connection_status_up{dsthost="*",dstport="*",name="hostname-grafana",process="*"
 connection_status_up{dsthost="127.0.0.1",dstport="22",name="ssh-from-localhost",process="*",protocol="tcp",srchost="127.0.0.1",srcport="*",status="established"} 0
 ```
 The metrics are:
-* **connection_status_up** with the labels for each socket iin the config and the following possible values:
+* **connection_status_up** with the labels for each socket in the config and the following possible values:
   - 1: Connection found
   * 0: Connection not found
 
@@ -55,7 +57,7 @@ sockets:
 ```
 The fields of the sockets to configure are:
 * **name**: A name to be able to filter by this in prometheus
-* **host** or **srcHost**: source Hostname or IP of the socket
+* **host** or **srcHost**: source Hostname or IP of the socket or "*" or "any"
 * **port** or **srcPort**: source Port to check. Default empty meaning not checked
 * **dstHost**: destination Hostname or IP of the socket. Default empty meaning not checked
 * **dstPort**: destination Port to check. Default empty meaning not checked

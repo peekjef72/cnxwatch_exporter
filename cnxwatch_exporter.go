@@ -23,6 +23,7 @@ import (
 	"github.com/go-kit/kit/log/level"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/common/promlog"
 	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
@@ -37,8 +38,9 @@ const (
 var (
 	listenAddress = kingpin.Flag("web.listen-address", "The address to listen on for HTTP requests.").Default(metricsPublishingPort).String()
 	metricsPath   = kingpin.Flag("web.telemetry-path", "Path under which to expose collector's internal metrics.").Default("/metrics").String()
-	configFile    = kingpin.Flag("config-file", "Exporter configuration file.").Default("config/config.yml").String()
+	configFile    = kingpin.Flag("config-file", "Exporter configuration file.").Short('c').Default("config/config.yml").String()
 	dry_run       = kingpin.Flag("dry-run", "Only check exporter configuration file and exit.").Short('n').Default("false").Bool()
+	debug_flag    = kingpin.Flag("debug", "debug connection checks.").Short('d').Default("false").Bool()
 )
 
 //***********************************************************************************************
@@ -80,12 +82,36 @@ func main() {
 	}
 	if *dry_run {
 		level.Info(logger).Log("msg", "configuration OK.")
-		os.Exit(0)
+		// os.Exit(0)
 	}
 	// create a new exporter
-	sockExporter := NewSocketSetExporter(sockets, logger)
+	sockExporter := NewSocketSetExporter(sockets, logger, *debug_flag)
 	//	prometheus.MustRegister(sockExporter)
 	level.Info(logger).Log("msg", "Connection Watch Exporter initialized")
+	if *dry_run {
+		level.Info(logger).Log("msg", "Connection Watch Exporter runs once in dry-mode (output to stdout).")
+		registry := prometheus.NewRegistry()
+		registry.MustRegister(sockExporter)
+		mfs, err := registry.Gather()
+		if err != nil {
+			level.Error(logger).Log("Errmsg", "Error gathering metrics", "err", err)
+			os.Exit(1)
+		}
+		enc := expfmt.NewEncoder(os.Stdout, expfmt.FmtText)
+
+		for _, mf := range mfs {
+			err := enc.Encode(mf)
+			if err != nil {
+				level.Error(logger).Log("Errmsg", err)
+				break
+			}
+		}
+		if closer, ok := enc.(expfmt.Closer); ok {
+			// This in particular takes care of the final "# EOF\n" line for OpenMetrics.
+			closer.Close()
+		}
+		os.Exit(1)
+	}
 
 	var landingPage = []byte(`<html>
 		<head>

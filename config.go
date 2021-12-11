@@ -119,11 +119,11 @@ func (thisSocket *socket) resolveHostname(hostname string) (net.IP, error) {
 		hostname = "*"
 	}
 	if strings.EqualFold(hostname, "any") || hostname == "*" {
-		// if thisSocket.Protocol == "tcp6" {
-		hostname = "0.0.0.0"
-		// } else {
-		// ip_str = "0.0.0.0"
-		// }
+		if thisSocket.Protocol == "tcp6" || thisSocket.Protocol == "udp6" {
+			hostname = "::"
+		} else {
+			hostname = "0.0.0.0"
+		}
 		// } else {
 	}
 	var ips []net.IP
@@ -138,6 +138,51 @@ func (thisSocket *socket) resolveHostname(hostname string) (net.IP, error) {
 		ip = ip.To4()
 	}
 	return ip, err
+}
+
+// print the socket's parameters (debug message)
+func (thisSocket *socket) ToString() string {
+	var s strings.Builder
+	var tmp string
+
+	s.WriteString(fmt.Sprintf("Name: '%s'", thisSocket.Name))
+
+	s.WriteString(fmt.Sprintf(", Protocol: '%s'", thisSocket.Protocol))
+
+	if thisSocket.SrcHost == "" {
+		tmp = "*"
+	} else {
+		tmp = thisSocket.SrcHost
+	}
+	if thisSocket.srcPort == 0 {
+		tmp = "*"
+	} else {
+		tmp = strconv.Itoa(int(thisSocket.srcPort))
+	}
+	s.WriteString(fmt.Sprintf(", Source: '%s:%s'", thisSocket.ip_src.String(), tmp))
+
+	if thisSocket.dstPort == 0 {
+		tmp = "*"
+	} else {
+		tmp = strconv.Itoa(int(thisSocket.dstPort))
+	}
+	s.WriteString(fmt.Sprintf(", Destination: '%s:%s'", thisSocket.ip_dst.String(), tmp))
+
+	s.WriteString(fmt.Sprintf(", Status: '%s'", thisSocket.Status))
+
+	// if thisSocket.User == "" {
+	// 		thisSocket.User = get_user(thisSocket.UID)
+	// 		s.WriteString(fmt.Sprintf(", User: %s", thisSocket.User))
+	// }
+
+	if thisSocket.ProcessName == "" {
+		tmp = "*"
+	} else {
+		tmp = thisSocket.ProcessName
+	}
+	s.WriteString(fmt.Sprintf(", Process: '%s'", tmp))
+
+	return s.String()
 }
 
 // *************************************************************
